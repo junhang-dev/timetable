@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>주간 학원 시간표</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --card: #ffffff;
+        --line: #dfe3eb;
+        --text: #2b2f36;
+        --muted: #6b7280;
+        --first: #2f80ed;
+        --first-soft: #e8f2ff;
+        --second: #f2c94c;
+        --second-soft: #fff8df;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+        background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+        color: var(--text);
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .sheet {
+        width: min(1100px, 100%);
+        background: var(--card);
+        border-radius: 20px;
+        box-shadow: 0 10px 28px rgba(47, 54, 67, 0.08);
+        padding: 28px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.4rem, 2.5vw, 2rem);
+      }
+
+      .subtitle {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .legend {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .action-btn {
+        border: 1px solid #c8d0de;
+        background: #fff;
+        color: #3a4352;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-weight: 700;
+        font-size: 0.86rem;
+        cursor: pointer;
+      }
+
+      .action-btn:hover {
+        background: #f2f5fb;
+      }
+
+      .action-btn.active {
+        border-color: #8ea2c9;
+        background: #eaf0ff;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        border: 1px solid var(--line);
+      }
+
+      .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+      }
+
+      .chip.first {
+        background: var(--first-soft);
+        color: #1b4f98;
+      }
+
+      .chip.first .dot {
+        background: var(--first);
+      }
+
+      .chip.second {
+        background: var(--second-soft);
+        color: #7a620f;
+      }
+
+      .chip.second .dot {
+        background: var(--second);
+      }
+
+      .table-wrap {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      th,
+      td {
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        padding: 12px 10px;
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      thead th {
+        background: #f3f6fb;
+        font-size: 0.95rem;
+      }
+
+      thead th:first-child {
+        background: #edf1f8;
+      }
+
+      tbody th {
+        background: #fafbfe;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+
+      tr:last-child td,
+      tr:last-child th {
+        border-bottom: 0;
+      }
+
+      tr td:last-child,
+      tr th:last-child {
+        border-right: 0;
+      }
+
+      .class {
+        border-radius: 10px;
+        padding: 8px 6px;
+        font-size: 0.86rem;
+        font-weight: 700;
+        line-height: 1.35;
+        min-height: 48px;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+      }
+
+      .class.selected {
+        outline: 3px solid #7f95ba;
+        outline-offset: 1px;
+      }
+
+      .first-class {
+        background: var(--first-soft);
+        color: #1f5db1;
+      }
+
+      .second-class {
+        background: var(--second-soft);
+        color: #7d6718;
+      }
+
+      .both {
+        background: linear-gradient(135deg, var(--first-soft) 0 50%, var(--second-soft) 50% 100%);
+        color: #444;
+      }
+
+      .empty {
+        color: #c2c8d2;
+        font-weight: 600;
+      }
+
+      .note {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      .helper {
+        margin-top: 8px;
+        color: #5b6475;
+        font-size: 0.82rem;
+      }
+
+      @media (max-width: 800px) {
+        .sheet {
+          padding: 18px;
+        }
+
+        .header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .header-right {
+          justify-content: flex-start;
+        }
+
+        th,
+        td {
+          padding: 9px 6px;
+        }
+
+        .class {
+          font-size: 0.78rem;
+          min-height: 42px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="sheet" aria-label="초등학생 두 명의 주간 학원 시간표">
+      <section class="header">
+        <div>
+          <h1>주간 학원 시간표</h1>
+          <p class="subtitle">첫째(파란색) · 둘째(노란색) 한눈에 보기</p>
+        </div>
+        <div class="header-right">
+          <div class="actions" aria-label="시간표 편집 버튼">
+            <button type="button" class="action-btn" data-action="add">추가</button>
+            <button type="button" class="action-btn active" data-action="edit">수정</button>
+            <button type="button" class="action-btn" data-action="delete">삭제</button>
+          </div>
+          <div class="legend" aria-label="색상 구분">
+            <span class="chip first"><span class="dot" aria-hidden="true"></span>첫째</span>
+            <span class="chip second"><span class="dot" aria-hidden="true"></span>둘째</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">시간</th>
+              <th scope="col">월</th>
+              <th scope="col">화</th>
+              <th scope="col">수</th>
+              <th scope="col">목</th>
+              <th scope="col">금</th>
+              <th scope="col">토</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">15:00 ~ 16:00</th>
+              <td><div class="class first-class">첫째<br />영어</div></td>
+              <td><div class="class empty">—</div></td>
+              <td><div class="class second-class">둘째<br />미술</div></td>
+              <td><div class="class empty">—</div></td>
+              <td><div class="class first-class">첫째<br />수학</div></td>
+              <td><div class="class second-class">둘째<br />피아노</div></td>
+            </tr>
+            <tr>
+              <th scope="row">16:00 ~ 17:00</th>
+              <td><div class="class second-class">둘째<br />태권도</div></td>
+              <td><div class="class first-class">첫째<br />코딩</div></td>
+              <td><div class="class empty">—</div></td>
+              <td><div class="class first-class">첫째<br />과학</div></td>
+              <td><div class="class second-class">둘째<br />영어</div></td>
+              <td><div class="class empty">—</div></td>
+            </tr>
+            <tr>
+              <th scope="row">17:00 ~ 18:00</th>
+              <td><div class="class both">첫째 수학 · 둘째 발레</div></td>
+              <td><div class="class second-class">둘째<br />독서논술</div></td>
+              <td><div class="class first-class">첫째<br />피아노</div></td>
+              <td><div class="class second-class">둘째<br />수학</div></td>
+              <td><div class="class empty">—</div></td>
+              <td><div class="class first-class">첫째<br />축구</div></td>
+            </tr>
+            <tr>
+              <th scope="row">18:00 ~ 19:00</th>
+              <td><div class="class empty">—</div></td>
+              <td><div class="class both">첫째 영어 · 둘째 영어</div></td>
+              <td><div class="class second-class">둘째<br />수영</div></td>
+              <td><div class="class empty">—</div></td>
+              <td><div class="class first-class">첫째<br />논술</div></td>
+              <td><div class="class empty">—</div></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <p class="note">※ 필요하면 과목명/시간은 그대로 수정해서 바로 사용할 수 있어요.</p>
+      <p class="helper">사용법: 블록을 한 번 클릭하면 선택되고, 같은 블록을 다시 클릭하면 현재 모드(추가/수정/삭제)가 적용돼요. 버튼을 누르면 선택된 블록에 즉시 적용됩니다.</p>
+    </main>
+
+    <script>
+      const buttons = document.querySelectorAll('.action-btn');
+      const blocks = document.querySelectorAll('.class');
+      let activeAction = 'edit';
+      let selectedBlock = null;
+
+      const setActiveButton = (action) => {
+        activeAction = action;
+        buttons.forEach((button) => button.classList.toggle('active', button.dataset.action === action));
+      };
+
+      const getDisplayText = (block) => block.innerText.replace(/\n/g, ' ').trim();
+
+      const applyBlock = (block, type, text) => {
+        block.classList.remove('first-class', 'second-class', 'both', 'empty');
+
+        if (type === 'empty') {
+          block.classList.add('empty');
+          block.innerHTML = '—';
+          return;
+        }
+
+        if (type === 'first') {
+          block.classList.add('first-class');
+        } else if (type === 'second') {
+          block.classList.add('second-class');
+        } else {
+          block.classList.add('both');
+        }
+
+        const safeText = (text || '').trim() || '수업';
+        block.innerHTML = safeText.replace(/\//g, '<br />');
+      };
+
+      const runAction = (action, block) => {
+        if (!block) {
+          alert('먼저 시간표 블록을 선택해 주세요.');
+          return;
+        }
+
+        if (action === 'delete') {
+          if (confirm('이 블록 내용을 삭제할까요?')) {
+            applyBlock(block, 'empty', '');
+          }
+          return;
+        }
+
+        if (action === 'add' && !block.classList.contains('empty')) {
+          const overwrite = confirm('이미 수업이 있어요. 덮어쓸까요?');
+          if (!overwrite) return;
+        }
+
+        const currentType = block.classList.contains('first-class')
+          ? 'first'
+          : block.classList.contains('second-class')
+            ? 'second'
+            : block.classList.contains('both')
+              ? 'both'
+              : 'first';
+
+        const text = prompt(
+          '수업명을 입력하세요. 줄바꿈은 / 로 입력 (예: 첫째/영어)',
+          block.classList.contains('empty') ? '' : getDisplayText(block).replace(/\s+/g, '/')
+        );
+
+        if (text === null) return;
+
+        const type = prompt('색상 타입을 입력하세요: first / second / both', currentType);
+        if (type === null) return;
+
+        const normalizedType = ['first', 'second', 'both'].includes(type.trim()) ? type.trim() : currentType;
+        applyBlock(block, normalizedType, text);
+      };
+
+      blocks.forEach((block) => {
+        block.addEventListener('click', () => {
+          if (selectedBlock === block) {
+            runAction(activeAction, block);
+            return;
+          }
+
+          selectedBlock?.classList.remove('selected');
+          selectedBlock = block;
+          selectedBlock.classList.add('selected');
+        });
+      });
+
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const action = button.dataset.action;
+          setActiveButton(action);
+          runAction(action, selectedBlock);
+        });
+      });
+    </script>
+  </body>
+</html>
