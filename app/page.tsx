@@ -9,30 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { applyBlock, runAction, type SelectedCell, type TimetableAction } from "@/lib/timetable-actions";
+import { useTimetable } from "@/hooks/use-timetable";
+import { runAction, type SelectedCell, type TimetableAction } from "@/lib/timetable-actions";
 import { createTimetableKey } from "@/lib/timetable-key";
 
 const days = ["월", "화", "수", "목", "금", "토"];
 const timeSlots = ["15:00 ~ 16:00", "16:00 ~ 17:00", "17:00 ~ 18:00", "18:00 ~ 19:00"];
-
-const initialEntries: Record<string, TimetableCellEntry> = {
-  [createTimetableKey("월", "15:00 ~ 16:00")]: { content: "첫째/영어", type: "first" },
-  [createTimetableKey("수", "15:00 ~ 16:00")]: { content: "둘째/미술", type: "second" },
-  [createTimetableKey("금", "15:00 ~ 16:00")]: { content: "첫째/수학", type: "first" },
-  [createTimetableKey("토", "15:00 ~ 16:00")]: { content: "둘째/피아노", type: "second" },
-  [createTimetableKey("월", "16:00 ~ 17:00")]: { content: "둘째/태권도", type: "second" },
-  [createTimetableKey("화", "16:00 ~ 17:00")]: { content: "첫째/코딩", type: "first" },
-  [createTimetableKey("목", "16:00 ~ 17:00")]: { content: "첫째/과학", type: "first" },
-  [createTimetableKey("금", "16:00 ~ 17:00")]: { content: "둘째/영어", type: "second" },
-  [createTimetableKey("월", "17:00 ~ 18:00")]: { content: "첫째 수학 · 둘째 발레", type: "both" },
-  [createTimetableKey("화", "17:00 ~ 18:00")]: { content: "둘째/독서논술", type: "second" },
-  [createTimetableKey("수", "17:00 ~ 18:00")]: { content: "첫째/피아노", type: "first" },
-  [createTimetableKey("목", "17:00 ~ 18:00")]: { content: "둘째/수학", type: "second" },
-  [createTimetableKey("토", "17:00 ~ 18:00")]: { content: "첫째/축구", type: "first" },
-  [createTimetableKey("화", "18:00 ~ 19:00")]: { content: "첫째 영어 · 둘째 영어", type: "both" },
-  [createTimetableKey("수", "18:00 ~ 19:00")]: { content: "둘째/수영", type: "second" },
-  [createTimetableKey("금", "18:00 ~ 19:00")]: { content: "첫째/논술", type: "first" }
-};
 
 type EditorState = {
   open: boolean;
@@ -45,7 +27,6 @@ type EditorState = {
 export default function Home() {
   const [activeAction, setActiveAction] = React.useState<TimetableAction>("edit");
   const [selectedCell, setSelectedCell] = React.useState<SelectedCell | null>(null);
-  const [entries, setEntries] = React.useState<Record<string, TimetableCellEntry>>(initialEntries);
   const [notice, setNotice] = React.useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [editorState, setEditorState] = React.useState<EditorState>({
@@ -55,6 +36,22 @@ export default function Home() {
     content: "",
     type: "first"
   });
+
+  const { entries, upsertEntry, removeEntry } = useTimetable();
+
+  const gridEntries = React.useMemo<Record<string, TimetableCellEntry>>(
+    () =>
+      Object.fromEntries(
+        Object.entries(entries).map(([key, entry]) => [
+          key,
+          {
+            content: entry.subject,
+            type: entry.colorType
+          }
+        ])
+      ),
+    [entries]
+  );
 
   const selectedKey = selectedCell ? createTimetableKey(selectedCell.day, selectedCell.timeSlot) : null;
 
@@ -72,7 +69,7 @@ export default function Home() {
   const handleActionClick = (action: TimetableAction) => {
     setActiveAction(action);
 
-    const request = runAction(action, selectedCell, entries);
+    const request = runAction(action, selectedCell, gridEntries);
 
     if (request.kind === "select-cell") {
       setNotice("먼저 시간표 셀을 선택해 주세요.");
@@ -94,23 +91,29 @@ export default function Home() {
     });
   };
 
-  const handleSubmitEditor = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitEditor = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!editorState.cell) {
       return;
     }
 
-    setEntries((prev) => applyBlock(prev, editorState.cell as SelectedCell, "upsert", { content: editorState.content, type: editorState.type }));
+    await upsertEntry({
+      day: editorState.cell.day,
+      timeSlot: editorState.cell.timeSlot,
+      subject: editorState.content.trim() || "수업",
+      colorType: editorState.type
+    });
+
     setEditorState((prev) => ({ ...prev, open: false }));
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedCell) {
       return;
     }
 
-    setEntries((prev) => applyBlock(prev, selectedCell, "delete"));
+    await removeEntry(createTimetableKey(selectedCell.day, selectedCell.timeSlot));
     setDeleteDialogOpen(false);
     setNotice("선택한 셀 내용을 삭제했어요.");
   };
@@ -154,7 +157,7 @@ export default function Home() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <TimetableGrid days={days} timeSlots={timeSlots} entries={entries} selectedKey={selectedKey} onCellClick={handleCellClick} />
+          <TimetableGrid days={days} timeSlots={timeSlots} entries={gridEntries} selectedKey={selectedKey} onCellClick={handleCellClick} />
           {notice ? <p className="rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-600">{notice}</p> : null}
           <p className="text-sm text-slate-500">※ 필요하면 과목명/시간은 그대로 수정해서 바로 사용할 수 있어요.</p>
           <p className="text-xs text-slate-500 md:text-sm">사용법: 셀을 클릭해 선택/해제한 뒤, 추가/수정/삭제 버튼으로 작업하세요.</p>

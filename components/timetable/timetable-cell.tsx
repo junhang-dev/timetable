@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
+import type { TimetableColorType } from "@/types/timetable";
 
-export type TimetableCellType = "first" | "second" | "both" | "empty";
+export type TimetableCellType = TimetableColorType;
 
 export type TimetableCellEntry = {
   content: string;
