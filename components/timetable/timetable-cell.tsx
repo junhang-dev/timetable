@@ -11,6 +11,7 @@ type TimetableCellProps = {
   day: string;
   timeSlot: string;
   entry?: TimetableCellEntry;
+  selected?: boolean;
   onClick?: (day: string, timeSlot: string) => void;
 };
 
@@ -28,7 +29,7 @@ const stateLabels: Record<TimetableCellType, string> = {
   empty: "빈칸"
 };
 
-export function TimetableCell({ day, timeSlot, entry, onClick }: TimetableCellProps) {
+export function TimetableCell({ day, timeSlot, entry, selected = false, onClick }: TimetableCellProps) {
   const value = entry ?? { content: "—", type: "empty" as const };
 
   return (
@@ -38,9 +39,11 @@ export function TimetableCell({ day, timeSlot, entry, onClick }: TimetableCellPr
         onClick={() => onClick?.(day, timeSlot)}
         className={cn(
           "grid min-h-12 w-full place-items-center rounded-lg px-2 py-2 text-xs font-semibold leading-relaxed md:text-sm",
-          stateStyles[value.type]
+          stateStyles[value.type],
+          selected && "outline outline-2 outline-offset-2 outline-slate-500"
         )}
         aria-label={`${day} ${timeSlot} ${stateLabels[value.type]}: ${value.content}`}
+        aria-pressed={selected}
       >
         {value.content.split("/").map((line) => (
           <span key={`${day}-${timeSlot}-${line}`}>{line}</span>
